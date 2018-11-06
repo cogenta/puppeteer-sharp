@@ -55,7 +55,7 @@ namespace PuppeteerSharp
             ViewPortOptions defaultViewport,
             ChromiumProcess chromiumProcess)
         {
-            Connection = connection;
+            SetConnectionAsync(connection, false).Wait();
             IgnoreHTTPSErrors = ignoreHTTPSErrors;
             DefaultViewport = defaultViewport;
             TargetsMap = new Dictionary<string, Target>();
@@ -63,12 +63,8 @@ namespace PuppeteerSharp
             DefaultContext = new BrowserContext(Connection, this, null);
             _contexts = contextIds.ToDictionary(keySelector: contextId => contextId,
                 elementSelector: contextId => new BrowserContext(Connection, this, contextId));
-
-            Connection.Closed += (object sender, EventArgs e) => Disconnected?.Invoke(this, new EventArgs());
-            Connection.MessageReceived += Connect_MessageReceived;
-
+            
             _chromiumProcess = chromiumProcess;
-            _logger = Connection.LoggerFactory.CreateLogger<Browser>();
         }
 
         #region Private members
@@ -76,7 +72,7 @@ namespace PuppeteerSharp
         internal readonly Dictionary<string, Target> TargetsMap;
 
         private readonly Dictionary<string, BrowserContext> _contexts;
-        private readonly ILogger<Browser> _logger;
+        private ILogger<Browser> _logger;
         private readonly ChromiumProcess _chromiumProcess;
         private Task _closeTask;
 
@@ -145,12 +141,36 @@ namespace PuppeteerSharp
         public BrowserContext DefaultContext { get; }
 
         internal TaskQueue ScreenshotTaskQueue { get; set; }
-        internal Connection Connection { get; }
+        internal Connection Connection { get; set; }
         internal ViewPortOptions DefaultViewport { get; }
 
         #endregion
 
         #region Public Methods
+
+        /// <summary>
+        /// Sets the connection for the browser
+        /// </summary>
+        /// <param name="connection">The connection to set</param>
+        /// <param name="initialized">Has the browser already been created</param>
+        /// <returns>A Task</returns>
+        public async Task SetConnectionAsync(Connection connection, bool initialized = true)
+        {
+            Connection = connection;
+
+            Connection.Closed += (object sender, EventArgs e) => Disconnected?.Invoke(this, new EventArgs());
+            Connection.MessageReceived += Connect_MessageReceived;
+
+            if (initialized)
+            {
+                await Connection.SendAsync("Target.setDiscoverTargets", new
+                {
+                    discover = true
+                }).ConfigureAwait(false);
+            }
+
+            _logger = Connection.LoggerFactory.CreateLogger<Browser>();
+        }
 
         /// <summary>
         /// Creates a new page

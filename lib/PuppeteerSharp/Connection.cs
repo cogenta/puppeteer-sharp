@@ -22,7 +22,14 @@ namespace PuppeteerSharp
     {
         private readonly ILogger _logger;
 
-        internal Connection(string url, int delay, IConnectionTransport transport, ILoggerFactory loggerFactory = null)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="url">The web socket URL</param>
+        /// <param name="delay">The sleep time for the message</param>
+        /// <param name="transport">The connection transport</param>
+        /// <param name="loggerFactory">The logger factory</param>
+        public Connection(string url, int delay, IConnectionTransport transport, ILoggerFactory loggerFactory = null)
         {
             LoggerFactory = loggerFactory ?? new LoggerFactory();
             Url = url;
