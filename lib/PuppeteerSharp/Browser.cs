@@ -156,7 +156,9 @@ namespace PuppeteerSharp
         /// <returns>A Task</returns>
         public async Task SetConnectionAsync(Connection connection, bool initialized = true)
         {
+            var oldConnection = connection;
             Connection = connection;
+            oldConnection?.Dispose();
 
             Connection.Closed += (object sender, EventArgs e) => Disconnected?.Invoke(this, new EventArgs());
             Connection.MessageReceived += Connect_MessageReceived;
