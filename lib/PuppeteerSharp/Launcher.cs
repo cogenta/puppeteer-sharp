@@ -10,7 +10,7 @@ namespace PuppeteerSharp
     /// <summary>
     /// Launcher controls the creation of Chromium processes or the connection remote ones.
     /// </summary>
-    public class Launcher
+    public class Launcher : IDisposable
     {
         #region Private members
 
@@ -191,6 +191,9 @@ namespace PuppeteerSharp
             browser.TargetCreated += InitialPageCallback;
             return initialPageCompletion.Task;
         }
+
+        /// <inheritDoc />
+        public void Dispose() => Process.Dispose();
 
         #endregion
     }

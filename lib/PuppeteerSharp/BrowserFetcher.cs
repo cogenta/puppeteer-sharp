@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Net;
-using System.IO.Compression;
 
 namespace PuppeteerSharp
 {
@@ -91,15 +91,17 @@ namespace PuppeteerSharp
         public async Task<bool> CanDownloadAsync(int revision)
         {
             var url = GetDownloadURL(Platform, DownloadHost, revision);
-
-            var client = new HttpClient();
-            var response = await client.SendAsync(new HttpRequestMessage
+            using (var client = new HttpClient())
+            using (var requestMessage = new HttpRequestMessage
             {
                 RequestUri = new Uri(url),
                 Method = HttpMethod.Head
-            }).ConfigureAwait(false);
+            })
+            {
+                var response = await client.SendAsync(requestMessage).ConfigureAwait(false);
 
-            return response.IsSuccessStatusCode;
+                return response.IsSuccessStatusCode;
+            }
         }
 
         /// <summary>
@@ -173,29 +175,30 @@ namespace PuppeteerSharp
                 downloadFolder.Create();
             }
 
-            var webClient = new WebClient();
-
-            if (DownloadProgressChanged != null)
+            using (var webClient = new WebClient())
             {
-                webClient.DownloadProgressChanged += DownloadProgressChanged;
-            }
-            await webClient.DownloadFileTaskAsync(new Uri(url), zipPath).ConfigureAwait(false);
+                if (DownloadProgressChanged != null)
+                {
+                    webClient.DownloadProgressChanged += DownloadProgressChanged;
+                }
+                await webClient.DownloadFileTaskAsync(new Uri(url), zipPath).ConfigureAwait(false);
 
-            if (Platform == Platform.MacOS)
-            {
-                //ZipFile and many others unzip libraries have issues extracting .app files
-                //Until we have a clear solution we'll call the native unzip tool
-                //https://github.com/dotnet/corefx/issues/15516
-                NativeExtractToDirectory(zipPath, folderPath);
-            }
-            else
-            {
-                ZipFile.ExtractToDirectory(zipPath, folderPath);
-            }
+                if (Platform == Platform.MacOS)
+                {
+                    //ZipFile and many others unzip libraries have issues extracting .app files
+                    //Until we have a clear solution we'll call the native unzip tool
+                    //https://github.com/dotnet/corefx/issues/15516
+                    NativeExtractToDirectory(zipPath, folderPath);
+                }
+                else
+                {
+                    ZipFile.ExtractToDirectory(zipPath, folderPath);
+                }
 
-            new FileInfo(zipPath).Delete();
+                new FileInfo(zipPath).Delete();
 
-            return RevisionInfo(revision);
+                return RevisionInfo(revision);
+            }
         }
 
         /// <summary>
@@ -257,10 +260,17 @@ namespace PuppeteerSharp
         private void NativeExtractToDirectory(string zipPath, string folderPath)
         {
             var process = new Process();
-            process.StartInfo.FileName = "unzip";
-            process.StartInfo.Arguments = $"{zipPath} -d {folderPath}";
-            process.Start();
-            process.WaitForExit();
+            try
+            {
+                process.StartInfo.FileName = "unzip";
+                process.StartInfo.Arguments = $"{zipPath} -d {folderPath}";
+                process.Start();
+                process.WaitForExit();
+            }
+            finally
+            {
+                process.Dispose();
+            }
         }
 
         private int GetRevisionFromPath(string folderName)

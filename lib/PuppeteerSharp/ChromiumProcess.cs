@@ -121,7 +121,11 @@ namespace PuppeteerSharp
         /// Disposes Chromium process and any temporary user directory.
         /// </summary>
         /// <param name="disposing">Indicates whether disposal was initiated by <see cref="Dispose()"/> operation.</param>
-        protected virtual void Dispose(bool disposing) => _currentState.Dispose(this);
+        protected virtual void Dispose(bool disposing)
+        {
+            _currentState.Dispose(this);
+            Process.Dispose();
+        }
 
         #endregion
 

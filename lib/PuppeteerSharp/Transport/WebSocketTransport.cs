@@ -127,6 +127,11 @@ namespace PuppeteerSharp.Transport
         }
 
         /// <inheritdoc/>
-        public void Dispose() => _client?.Dispose();
+        public void Dispose()
+        {
+            _client?.Dispose();
+            _readerCancellationSource?.Dispose();
+            _socketQueue?.Dispose();
+        }
     }
 }
