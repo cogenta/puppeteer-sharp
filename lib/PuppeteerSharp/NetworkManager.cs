@@ -100,26 +100,34 @@ namespace PuppeteerSharp
 
         private async void Client_MessageReceived(object sender, MessageEventArgs e)
         {
-            switch (e.MessageID)
+            try
             {
-                case "Network.requestWillBeSent":
-                    OnRequestWillBeSent(e.MessageData.ToObject<RequestWillBeSentPayload>());
-                    break;
-                case "Network.requestIntercepted":
-                    await OnRequestInterceptedAsync(e.MessageData.ToObject<RequestInterceptedResponse>()).ConfigureAwait(false);
-                    break;
-                case "Network.requestServedFromCache":
-                    OnRequestServedFromCache(e.MessageData.ToObject<RequestServedFromCacheResponse>());
-                    break;
-                case "Network.responseReceived":
-                    OnResponseReceived(e.MessageData.ToObject<ResponseReceivedResponse>());
-                    break;
-                case "Network.loadingFinished":
-                    OnLoadingFinished(e.MessageData.ToObject<LoadingFinishedResponse>());
-                    break;
-                case "Network.loadingFailed":
-                    OnLoadingFailed(e.MessageData.ToObject<LoadingFailedResponse>());
-                    break;
+                switch (e.MessageID)
+                {
+                    case "Network.requestWillBeSent":
+                        OnRequestWillBeSent(e.MessageData.ToObject<RequestWillBeSentPayload>());
+                        break;
+                    case "Network.requestIntercepted":
+                        await OnRequestInterceptedAsync(e.MessageData.ToObject<RequestInterceptedResponse>()).ConfigureAwait(false);
+                        break;
+                    case "Network.requestServedFromCache":
+                        OnRequestServedFromCache(e.MessageData.ToObject<RequestServedFromCacheResponse>());
+                        break;
+                    case "Network.responseReceived":
+                        OnResponseReceived(e.MessageData.ToObject<ResponseReceivedResponse>());
+                        break;
+                    case "Network.loadingFinished":
+                        OnLoadingFinished(e.MessageData.ToObject<LoadingFinishedResponse>());
+                        break;
+                    case "Network.loadingFailed":
+                        OnLoadingFailed(e.MessageData.ToObject<LoadingFailedResponse>());
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Unhandled exceptions will cause the application to crash
+                _logger.LogError(ex, $"Error occured whilst calling {nameof(Client_MessageReceived)}. Message id: {{0}}", e.MessageID);
             }
         }
 
