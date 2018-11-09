@@ -451,8 +451,17 @@ namespace PuppeteerSharp
         /// Closes <see cref="Connection"/> and any Chromium <see cref="Process"/> that was
         /// created by Puppeteer.
         /// </summary>
-        public void Dispose() => _ = CloseAsync();
-
+        public void Dispose()
+        {
+            try
+            {
+                CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            finally
+            {
+                ScreenshotTaskQueue?.Dispose();
+            }
+        }
         #endregion
     }
 }

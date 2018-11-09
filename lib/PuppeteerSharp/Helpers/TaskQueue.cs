@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace PuppeteerSharp.Helpers
 {
-    internal class TaskQueue
+    internal class TaskQueue : IDisposable
     {
         private readonly SemaphoreSlim _semaphore;
 
@@ -38,5 +38,7 @@ namespace PuppeteerSharp.Helpers
                 _semaphore.Release();
             }
         }
+
+        public void Dispose() => _semaphore.Dispose();
     }
 }

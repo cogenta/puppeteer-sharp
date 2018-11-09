@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -319,8 +319,13 @@ namespace PuppeteerSharp
         /// <returns>A task that resolves when the <c>script</c> returns a truthy value</returns>
         /// <seealso cref="Page.WaitForFunctionAsync(string, WaitForFunctionOptions, object[])"/>
         /// <exception cref="WaitTaskTimeoutException">If timeout occurred.</exception>
-        public Task<JSHandle> WaitForFunctionAsync(string script, WaitForFunctionOptions options, params object[] args)
-            => new WaitTask(this, script, false, "function", options.Polling, options.PollingInterval, options.Timeout, args).Task;
+        public async Task<JSHandle> WaitForFunctionAsync(string script, WaitForFunctionOptions options, params object[] args)
+        {
+            using (var waitTask = new WaitTask(this, script, false, "function", options.Polling, options.PollingInterval, options.Timeout, args))
+            {
+                return await waitTask.Task;
+            }
+        }
 
         /// <summary>
         /// Waits for an expression to be evaluated to a truthy value
@@ -330,8 +335,13 @@ namespace PuppeteerSharp
         /// <returns>A task that resolves when the <c>script</c> returns a truthy value</returns>
         /// <seealso cref="Page.WaitForExpressionAsync(string, WaitForFunctionOptions)"/>
         /// <exception cref="WaitTaskTimeoutException">If timeout occurred.</exception>
-        public Task<JSHandle> WaitForExpressionAsync(string script, WaitForFunctionOptions options)
-            => new WaitTask(this, script, true, "function", options.Polling, options.PollingInterval, options.Timeout).Task;
+        public async Task<JSHandle> WaitForExpressionAsync(string script, WaitForFunctionOptions options)
+        {
+            using (var waitTask = new WaitTask(this, script, true, "function", options.Polling, options.PollingInterval, options.Timeout))
+            {
+                return await waitTask.Task;
+            }
+        }
 
         /// <summary>
         /// Triggers a change and input event once all the provided options have been selected. 
