@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -85,9 +85,13 @@ namespace PuppeteerSharp
 
             async void EventHandler(object sender, TracingCompleteEventArgs e)
             {
-                var tracingData = await ReadStream(e.Stream, _path).ConfigureAwait(false);
-                _client.TracingComplete -= EventHandler;
-                taskWrapper.SetResult(tracingData);
+                try
+                {
+                    var tracingData = await ReadStream(e.Stream, _path).ConfigureAwait(false);
+                    _client.TracingComplete -= EventHandler;
+                    taskWrapper.SetResult(tracingData);
+                }
+                catch { }
             }
 
             _client.TracingComplete += EventHandler;

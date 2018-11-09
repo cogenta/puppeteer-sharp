@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -183,73 +183,81 @@ namespace PuppeteerSharp
 
         private async void Transport_MessageReceived(object sender, MessageReceivedEventArgs e)
         {
-            var response = e.Message;
-            JObject obj = null;
-
-            if (response.Length > 0 && Delay > 0)
-            {
-                await Task.Delay(Delay).ConfigureAwait(false);
-            }
-
             try
             {
-                obj = JObject.Parse(response);
-            }
-            catch (JsonException exc)
-            {
-                _logger.LogError(exc, "Failed to deserialize response", response);
-                return;
-            }
+                var response = e.Message;
+                JObject obj = null;
 
-            _logger.LogTrace("◀ Receive {Message}", response);
-
-            var id = obj[MessageKeys.Id]?.Value<int>();
-
-            if (id.HasValue)
-            {
-                //If we get the object we are waiting for we return if
-                //if not we add this to the list, sooner or later some one will come for it 
-                if (_callbacks.TryRemove(id.Value, out var callback))
+                if (response.Length > 0 && Delay > 0)
                 {
-                    if (obj[MessageKeys.Error] != null)
-                    {
-                        callback.TaskWrapper.TrySetException(new MessageException(callback, obj));
-                    }
-                    else
-                    {
-                        callback.TaskWrapper.TrySetResult(obj[MessageKeys.Result].Value<JObject>());
-                    }
+                    await Task.Delay(Delay).ConfigureAwait(false);
                 }
-            }
-            else
-            {
-                var method = obj[MessageKeys.Method].AsString();
-                var param = obj[MessageKeys.Params];
 
-                if (method == "Target.receivedMessageFromTarget")
+                try
                 {
-                    var sessionId = param[MessageKeys.SessionId].AsString();
-                    if (_sessions.TryGetValue(sessionId, out var session))
-                    {
-                        session.OnMessage(param[MessageKeys.Message].AsString());
-                    }
+                    obj = JObject.Parse(response);
                 }
-                else if (method == "Target.detachedFromTarget")
+                catch (JsonException exc)
                 {
-                    var sessionId = param[MessageKeys.SessionId].AsString();
-                    if (_sessions.TryRemove(sessionId, out var session) && !session.IsClosed)
+                    _logger.LogError(exc, "Failed to deserialize response", response);
+                    return;
+                }
+
+                _logger.LogTrace("◀ Receive {Message}", response);
+
+                var id = obj[MessageKeys.Id]?.Value<int>();
+
+                if (id.HasValue)
+                {
+                    //If we get the object we are waiting for we return if
+                    //if not we add this to the list, sooner or later some one will come for it 
+                    if (_callbacks.TryRemove(id.Value, out var callback))
                     {
-                        session.OnClosed();
+                        if (obj[MessageKeys.Error] != null)
+                        {
+                            callback.TaskWrapper.TrySetException(new MessageException(callback, obj));
+                        }
+                        else
+                        {
+                            callback.TaskWrapper.TrySetResult(obj[MessageKeys.Result].Value<JObject>());
+                        }
                     }
                 }
                 else
                 {
-                    MessageReceived?.Invoke(this, new MessageEventArgs
+                    var method = obj[MessageKeys.Method].AsString();
+                    var param = obj[MessageKeys.Params];
+
+                    if (method == "Target.receivedMessageFromTarget")
                     {
-                        MessageID = method,
-                        MessageData = param
-                    });
+                        var sessionId = param[MessageKeys.SessionId].AsString();
+                        if (_sessions.TryGetValue(sessionId, out var session))
+                        {
+                            session.OnMessage(param[MessageKeys.Message].AsString());
+                        }
+                    }
+                    else if (method == "Target.detachedFromTarget")
+                    {
+                        var sessionId = param[MessageKeys.SessionId].AsString();
+                        if (_sessions.TryRemove(sessionId, out var session) && !session.IsClosed)
+                        {
+                            session.OnClosed();
+                        }
+                    }
+                    else
+                    {
+                        MessageReceived?.Invoke(this, new MessageEventArgs
+                        {
+                            MessageID = method,
+                            MessageData = param
+                        });
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Unhandled exceptions will cause the application to crash
+                _logger.LogError(ex, $"Error occured whilst calling {nameof(Transport_MessageReceived)}.");
             }
         }
 

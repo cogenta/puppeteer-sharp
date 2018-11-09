@@ -101,20 +101,28 @@ namespace PuppeteerSharp.PageCoverage
 
         private async void client_MessageReceived(object sender, MessageEventArgs e)
         {
-            switch (e.MessageID)
+            try
             {
-                case "CSS.styleSheetAdded":
-                    await OnStyleSheetAdded(e.MessageData.ToObject<CSSStyleSheetAddedResponse>()).ConfigureAwait(false);
-                    break;
-                case "Runtime.executionContextsCleared":
-                    OnExecutionContextsCleared();
-                    break;
+                switch (e.MessageID)
+                {
+                    case "CSS.styleSheetAdded":
+                        await OnStyleSheetAdded(e.MessageData.ToObject<CSSStyleSheetAddedResponse>()).ConfigureAwait(false);
+                        break;
+                    case "Runtime.executionContextsCleared":
+                        OnExecutionContextsCleared();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Unhandled exceptions will cause the application to crash
+                _logger.LogError(ex, $"Error occured whilst calling {nameof(client_MessageReceived)}. Message id: {{0}}", e.MessageID);
             }
         }
 
         private async Task OnStyleSheetAdded(CSSStyleSheetAddedResponse styleSheetAddedResponse)
         {
-            if (string.IsNullOrEmpty(styleSheetAddedResponse.Header.SourceURL))
+            if (string.IsNullOrEmpty(styleSheetAddedResponse?.Header?.SourceURL))
             {
                 return;
             }

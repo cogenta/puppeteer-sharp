@@ -98,17 +98,25 @@ namespace PuppeteerSharp
 
         internal async void OnMessageReceived(object sender, MessageEventArgs e)
         {
-            switch (e.MessageID)
+            try
             {
-                case "Runtime.executionContextCreated":
-                    OnExecutionContextCreated(e);
-                    break;
-                case "Runtime.consoleAPICalled":
-                    await OnConsoleAPICalled(e).ConfigureAwait(false);
-                    break;
-                case "Runtime.exceptionThrown":
-                    OnExceptionThrown(e);
-                    break;
+                switch (e.MessageID)
+                {
+                    case "Runtime.executionContextCreated":
+                        OnExecutionContextCreated(e);
+                        break;
+                    case "Runtime.consoleAPICalled":
+                        await OnConsoleAPICalled(e).ConfigureAwait(false);
+                        break;
+                    case "Runtime.exceptionThrown":
+                        OnExceptionThrown(e);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Unhandled exceptions will cause the application to crash
+                _logger.LogError(ex, $"Error occured whilst calling {nameof(OnMessageReceived)}. Message id: {{0}}", e.MessageID);
             }
         }
 
