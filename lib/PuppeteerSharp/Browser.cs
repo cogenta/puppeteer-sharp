@@ -156,7 +156,7 @@ namespace PuppeteerSharp
         /// <returns>A Task</returns>
         public async Task SetConnectionAsync(Connection connection, bool initialized = true)
         {
-            var oldConnection = connection;
+            var oldConnection = Connection;
             Connection = connection;
             oldConnection?.Dispose();
 
