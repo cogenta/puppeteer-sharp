@@ -114,7 +114,7 @@ namespace PuppeteerSharp.PageCoverage
             }
             catch (Exception ex)
             {
-                var message = $"CSSCoverage failed to process {nameof(e)}. {e.MessageID}. {ex.Message}. {ex.StackTrace}";
+                var message = $"CSSCoverage failed to process {nameof(Client_MessageReceived)}. {e.MessageID}. {ex.Message}. {ex.StackTrace}";
                 _logger.LogError(ex, message);
                 _client.Close(message);
             }
