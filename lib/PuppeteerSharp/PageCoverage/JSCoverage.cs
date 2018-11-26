@@ -43,7 +43,7 @@ namespace PuppeteerSharp.PageCoverage
             _scriptURLs.Clear();
             _scriptSources.Clear();
 
-            _client.MessageReceived += client_MessageReceived;
+            _client.MessageReceived += Client_MessageReceived;
 
             return Task.WhenAll(
                 _client.SendAsync("Profiler.enable"),
@@ -68,7 +68,7 @@ namespace PuppeteerSharp.PageCoverage
                _client.SendAsync("Profiler.disable"),
                _client.SendAsync("Debugger.disable")
            ).ConfigureAwait(false);
-            _client.MessageReceived -= client_MessageReceived;
+            _client.MessageReceived -= Client_MessageReceived;
 
             var coverage = new List<CoverageEntry>();
             foreach (var entry in profileResponseTask.Result.Result)
@@ -96,14 +96,14 @@ namespace PuppeteerSharp.PageCoverage
             return coverage.ToArray();
         }
 
-        private async void client_MessageReceived(object sender, MessageEventArgs e)
+        private async void Client_MessageReceived(object sender, MessageEventArgs e)
         {
             try
             {
                 switch (e.MessageID)
                 {
                     case "Debugger.scriptParsed":
-                        await OnScriptParsed(e.MessageData.ToObject<DebuggerScriptParsedResponse>()).ConfigureAwait(false);
+                        await OnScriptParsed(e.MessageData.ToObject<DebuggerScriptParsedResponse>(true)).ConfigureAwait(false);
                         break;
                     case "Runtime.executionContextsCleared":
                         OnExecutionContextsCleared();
@@ -112,8 +112,9 @@ namespace PuppeteerSharp.PageCoverage
             }
             catch (Exception ex)
             {
-                // Unhandled exceptions will cause the application to crash
-                _logger.LogError(ex, $"Error occured whilst calling {nameof(client_MessageReceived)}. Message id: {{0}}", e.MessageID);
+                var message = $"JSCoverage failed to process {nameof(client_MessageReceived)}. {e.MessageID}. {ex.Message}. {ex.StackTrace}";
+                _logger.LogError(ex, message);
+                _client.Close(message);
             }
         }
 

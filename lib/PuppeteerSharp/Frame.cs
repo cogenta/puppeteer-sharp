@@ -651,7 +651,7 @@ namespace PuppeteerSharp
         {
             if (context != null)
             {
-                _contextResolveTaskWrapper.SetResult(context);
+                _contextResolveTaskWrapper.TrySetResult(context);
 
                 foreach (var waitTask in WaitTasks)
                 {

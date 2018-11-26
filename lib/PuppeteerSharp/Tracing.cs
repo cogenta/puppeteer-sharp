@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using PuppeteerSharp.Messaging;
 
 namespace PuppeteerSharp
@@ -40,10 +41,12 @@ namespace PuppeteerSharp
             "disabled-by-default-devtools.timeline.stack",
             "disabled-by-default-v8.cpu_profiler"
         };
+        private readonly ILogger _logger;
 
         internal Tracing(CDPSession client)
         {
             _client = client;
+            _logger = client.LoggerFactory.CreateLogger<Tracing>();
         }
 
         /// <summary>
@@ -91,7 +94,12 @@ namespace PuppeteerSharp
                     _client.TracingComplete -= EventHandler;
                     taskWrapper.SetResult(tracingData);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    var message = $"Tracing failed to process the tracing complete. {ex.Message}. {ex.StackTrace}";
+                    _logger.LogError(ex, message);
+                    _client.Close(message);
+                }
             }
 
             _client.TracingComplete += EventHandler;

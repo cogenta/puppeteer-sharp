@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using PuppeteerSharp.Helpers;
 using PuppeteerSharp.Messaging;
 using PuppeteerSharp.Transport;
@@ -82,6 +83,11 @@ namespace PuppeteerSharp
         public bool IsClosed { get; internal set; }
 
         /// <summary>
+        /// Connection close reason.
+        /// </summary>
+        public string CloseReason { get; private set; }
+
+        /// <summary>
         /// Gets the logger factory.
         /// </summary>
         /// <value>The logger factory.</value>
@@ -95,7 +101,7 @@ namespace PuppeteerSharp
         {
             if (IsClosed)
             {
-                throw new TargetClosedException($"Protocol error({method}): Target closed.");
+                throw new TargetClosedException($"Protocol error({method}): Target closed.", CloseReason);
             }
 
             var id = Interlocked.Increment(ref _lastId);
@@ -104,7 +110,7 @@ namespace PuppeteerSharp
                 { MessageKeys.Id, id },
                 { MessageKeys.Method, method },
                 { MessageKeys.Params, args }
-            });
+            }, JsonHelper.DefaultJsonSerializerSettings);
 
             _logger.LogTrace("Send ► {Id} Method {Method} Params {@Params}", id, method, (object)args);
 
@@ -127,7 +133,7 @@ namespace PuppeteerSharp
         internal async Task<T> SendAsync<T>(string method, dynamic args = null)
         {
             JToken response = await SendAsync(method, args).ConfigureAwait(false);
-            return response.ToObject<T>();
+            return response.ToObject<T>(true);
         }
 
         internal async Task<CDPSession> CreateSessionAsync(TargetInfo targetInfo)
@@ -144,27 +150,29 @@ namespace PuppeteerSharp
         internal bool HasPendingCallbacks() => _callbacks.Count != 0;
         #endregion
 
-        private void OnClose()
+        internal void Close(string closeReason)
         {
             if (IsClosed)
             {
                 return;
             }
             IsClosed = true;
+            CloseReason = closeReason;
 
             Transport.StopReading();
             Closed?.Invoke(this, new EventArgs());
 
             foreach (var session in _sessions.Values.ToArray())
             {
-                session.OnClosed();
+                session.Close(closeReason);
             }
             _sessions.Clear();
 
             foreach (var response in _callbacks.Values.ToArray())
             {
                 response.TaskWrapper.TrySetException(new TargetClosedException(
-                    $"Protocol error({response.Method}): Target closed."
+                    $"Protocol error({response.Method}): Target closed.",
+                    closeReason
                 ));
             }
             _callbacks.Clear();
@@ -195,7 +203,7 @@ namespace PuppeteerSharp
 
                 try
                 {
-                    obj = JObject.Parse(response);
+                    obj = JsonConvert.DeserializeObject<JObject>(response, JsonHelper.DefaultJsonSerializerSettings);
                 }
                 catch (JsonException exc)
                 {
@@ -241,7 +249,7 @@ namespace PuppeteerSharp
                         var sessionId = param[MessageKeys.SessionId].AsString();
                         if (_sessions.TryRemove(sessionId, out var session) && !session.IsClosed)
                         {
-                            session.OnClosed();
+                            session.Close("Target.detachedFromTarget");
                         }
                     }
                     else
@@ -256,12 +264,13 @@ namespace PuppeteerSharp
             }
             catch (Exception ex)
             {
-                // Unhandled exceptions will cause the application to crash
-                _logger.LogError(ex, $"Error occured whilst calling {nameof(Transport_MessageReceived)}.");
+                var message = $"Connection failed to process {nameof(Transport_MessageReceived)}. {e.Message}. {ex.Message}. {ex.StackTrace}";
+                _logger.LogError(ex, message);
+                Close(message);
             }
         }
 
-        void Transport_Closed(object sender, EventArgs e) => OnClose();
+        void Transport_Closed(object sender, TransportClosedEventArgs e) => Close(e.CloseReason);
 
         #endregion
 
@@ -305,7 +314,7 @@ namespace PuppeteerSharp
         /// <see cref="Connection"/> was occupying.</remarks>
         public void Dispose()
         {
-            OnClose();
+            Close("Connection disposed");
             Transport.Dispose();
         }
         #endregion
@@ -316,6 +325,7 @@ namespace PuppeteerSharp
         Task<JObject> IConnection.SendAsync(string method, dynamic args, bool waitForCallback)
             => SendAsync(method, args, waitForCallback);
         IConnection IConnection.Connection => null;
+        void IConnection.Close(string closeReason) => Close(closeReason);
         #endregion
     }
 }
