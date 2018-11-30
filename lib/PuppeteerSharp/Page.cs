@@ -86,8 +86,6 @@ namespace PuppeteerSharp
             Client.MessageReceived += Client_MessageReceived;
         }
 
-        internal CDPSession Client { get; }
-
         #region Public Properties
 
         /// <summary>
@@ -304,6 +302,11 @@ namespace PuppeteerSharp
         /// Gets the accessibility.
         /// </summary>
         public Accessibility Accessibility { get; }
+
+        /// <summary>
+        /// Gets the client
+        /// </summary>
+        public CDPSession Client { get; }
 
         internal bool JavascriptEnabled { get; set; } = true;
         #endregion
