@@ -3,10 +3,11 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using PuppeteerSharp.Helpers;
+using System;
 
 namespace PuppeteerSharp
 {
-    internal class NavigatorWatcher
+    internal class NavigatorWatcher : IDisposable
     {
         private static readonly Dictionary<WaitUntilNavigation, string> _puppeteerToProtocolLifecycle =
             new Dictionary<WaitUntilNavigation, string>
@@ -16,7 +17,9 @@ namespace PuppeteerSharp
                 [WaitUntilNavigation.Networkidle0] = "networkIdle",
                 [WaitUntilNavigation.Networkidle2] = "networkAlmostIdle"
             };
+        private static readonly WaitUntilNavigation[] _defaultWaitUntil = new[] { WaitUntilNavigation.Load };
 
+        private readonly NetworkManager _networkManager;
         private readonly FrameManager _frameManager;
         private readonly Frame _frame;
         private readonly NavigationOptions _options;
@@ -38,7 +41,7 @@ namespace PuppeteerSharp
             int timeout,
             NavigationOptions options)
         {
-            var waitUntil = new[] { WaitUntilNavigation.Load };
+            var waitUntil = _defaultWaitUntil;
 
             if (options?.WaitUntil != null)
             {
@@ -53,6 +56,7 @@ namespace PuppeteerSharp
             });
 
             _frameManager = frameManager;
+            _networkManager = networkManager;
             _frame = mainFrame;
             _options = options;
             _initialLoaderId = mainFrame.LoaderId;
@@ -157,10 +161,16 @@ namespace PuppeteerSharp
             return true;
         }
 
-        private void CleanUp()
+        public void Dispose() => Dispose(true);
+
+        ~NavigatorWatcher() => Dispose(false);
+
+        public void Dispose(bool disposing)
         {
             _frameManager.LifecycleEvent -= CheckLifecycleComplete;
-            _frameManager.FrameDetached -= CheckLifecycleComplete;
+            _frameManager.FrameNavigatedWithinDocument -= NavigatedWithinDocument;
+            _frameManager.FrameDetached -= OnFrameDetached;
+            _networkManager.Request -= OnRequest;
         }
 
         #endregion
