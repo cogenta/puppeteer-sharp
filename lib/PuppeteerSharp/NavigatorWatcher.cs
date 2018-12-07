@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Diagnostics.Contracts;
@@ -17,6 +17,7 @@ namespace PuppeteerSharp
                 [WaitUntilNavigation.Networkidle0] = "networkIdle",
                 [WaitUntilNavigation.Networkidle2] = "networkAlmostIdle"
             };
+        private static readonly WaitUntilNavigation[] _defaultWaitUntil = new[] { WaitUntilNavigation.Load };
 
         private readonly NetworkManager _networkManager;
         private readonly FrameManager _frameManager;
@@ -40,7 +41,7 @@ namespace PuppeteerSharp
             int timeout,
             NavigationOptions options)
         {
-            var waitUntil = new[] { WaitUntilNavigation.Load };
+            var waitUntil = _defaultWaitUntil;
 
             if (options?.WaitUntil != null)
             {
