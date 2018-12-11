@@ -379,8 +379,7 @@ namespace PuppeteerSharp
         public async Task<ElementHandle> QuerySelectorAsync(string selector)
         {
             var document = await GetDocument().ConfigureAwait(false);
-            var value = await document.QuerySelectorAsync(selector).ConfigureAwait(false);
-            return value;
+            return await document.QuerySelectorAsync(selector).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -392,8 +391,7 @@ namespace PuppeteerSharp
         public async Task<ElementHandle[]> QuerySelectorAllAsync(string selector)
         {
             var document = await GetDocument().ConfigureAwait(false);
-            var value = await document.QuerySelectorAllAsync(selector).ConfigureAwait(false);
-            return value;
+            return await document.QuerySelectorAllAsync(selector).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -405,8 +403,7 @@ namespace PuppeteerSharp
         public async Task<ElementHandle[]> XPathAsync(string expression)
         {
             var document = await GetDocument().ConfigureAwait(false);
-            var value = await document.XPathAsync(expression).ConfigureAwait(false);
-            return value;
+            return await document.XPathAsync(expression).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -690,7 +687,7 @@ namespace PuppeteerSharp
                 _documentCompletionSource = new TaskCompletionSource<ElementHandle>();
                 var context = await GetExecutionContextAsync().ConfigureAwait(false);
                 var document = await context.EvaluateExpressionHandleAsync("document").ConfigureAwait(false);
-                _documentCompletionSource.SetResult(document as ElementHandle);
+                _documentCompletionSource.TrySetResult(document as ElementHandle);
             }
             return await _documentCompletionSource.Task.ConfigureAwait(false);
         }

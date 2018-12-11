@@ -5,11 +5,11 @@ using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 using PuppeteerSharp.Helpers;
 using PuppeteerSharp.Input;
 using PuppeteerSharp.Media;
@@ -859,8 +859,7 @@ namespace PuppeteerSharp
                 preferCSSPageSize = options.PreferCSSPageSize
             }).ConfigureAwait(false);
 
-            var buffer = Convert.FromBase64String(result.GetValue(MessageKeys.Data).AsString());
-            return buffer;
+            return Convert.FromBase64String(result.GetValue(MessageKeys.Data).AsString());
         }
 
         /// <summary>
@@ -1511,7 +1510,7 @@ namespace PuppeteerSharp
             _screenshotBurstModeOn = false;
             if (_screenshotBurstModeOptions != null)
             {
-                ResetBackgroundColorAndViewport(_screenshotBurstModeOptions);
+                ResetBackgroundColorAndViewportAsync(_screenshotBurstModeOptions);
             }
 
             return Task.CompletedTask;
@@ -1717,12 +1716,12 @@ namespace PuppeteerSharp
             }
             else
             {
-                await ResetBackgroundColorAndViewport(options);
+                await ResetBackgroundColorAndViewportAsync(options).ConfigureAwait(false);
             }
             return result.Data;
         }
 
-        private Task ResetBackgroundColorAndViewport(ScreenshotOptions options)
+        private Task ResetBackgroundColorAndViewportAsync(ScreenshotOptions options)
         {
             var omitBackgroundTask = options?.OmitBackground == true && options.Type == ScreenshotType.Png ?
                 Client.SendAsync("Emulation.setDefaultBackgroundColorOverride") : Task.CompletedTask;
@@ -1829,13 +1828,33 @@ namespace PuppeteerSharp
 
         private async Task OnBindingCalled(BindingCalledResponse e)
         {
-            var result = await ExecuteBinding(e).ConfigureAwait(false);
+            string expression = null;
 
-            var expression = EvaluationString(
-                @"function deliverResult(name, seq, result) {
-                    window[name]['callbacks'].get(seq)(result);
-                    window[name]['callbacks'].delete(seq);
-                }", e.BindingPayload.Name, e.BindingPayload.Seq, result);
+            try
+            {
+                var result = await ExecuteBinding(e).ConfigureAwait(false);
+
+                expression = EvaluationString(
+                    @"function deliverResult(name, seq, result) {
+                        window[name]['callbacks'].get(seq).resolve(result);
+                        window[name]['callbacks'].delete(seq);
+                    }", e.BindingPayload.Name, e.BindingPayload.Seq, result);
+            }
+            catch (Exception ex)
+            {
+                if (ex is TargetInvocationException)
+                {
+                    ex = ex.InnerException;
+                }
+
+                expression = EvaluationString(
+                    @"function deliverError(name, seq, message, stack) {
+                        const error = new Error(message);
+                        error.stack = stack;
+                        window[name]['callbacks'].get(seq).reject(error);
+                        window[name]['callbacks'].delete(seq);
+                    }", e.BindingPayload.Name, e.BindingPayload.Seq, ex.Message, ex.StackTrace);
+            }
 
             await Client.SendAsync("Runtime.evaluate", new
             {
@@ -2020,7 +2039,7 @@ namespace PuppeteerSharp
                 }
                 const seq = (me['lastSeq'] || 0) + 1;
                 me['lastSeq'] = seq;
-                const promise = new Promise(fulfill => callbacks.set(seq, fulfill));
+                const promise = new Promise((resolve, reject) => callbacks.set(seq, {resolve, reject}));
                 binding(JSON.stringify({name: bindingName, seq, args}));
                 return promise;
               };
