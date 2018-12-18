@@ -10,7 +10,7 @@ using PuppeteerSharp.Messaging;
 
 namespace PuppeteerSharp
 {
-    internal class FrameManager
+    internal class FrameManager : IDisposable
     {
         private readonly CDPSession _client;
         private Dictionary<int, ExecutionContext> _contextIdToContext;
@@ -412,6 +412,8 @@ namespace PuppeteerSharp
 
             return await tcs.Task;
         }
+
+        public void Dispose() => _client.MessageReceived -= Client_MessageReceived;
 
         #endregion
     }

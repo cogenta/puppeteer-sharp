@@ -8,7 +8,7 @@ using PuppeteerSharp.Messaging;
 
 namespace PuppeteerSharp
 {
-    internal class NetworkManager
+    internal class NetworkManager : IDisposable
     {
         #region Private members
 
@@ -387,6 +387,8 @@ namespace PuppeteerSharp
                 })
             ).ConfigureAwait(false);
         }
+
+        public void Dispose() => _client.MessageReceived -= Client_MessageReceived;
         #endregion
     }
 }
