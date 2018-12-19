@@ -263,11 +263,14 @@ namespace PuppeteerSharp
 
             try
             {
-                await _client.SendAsync("Network.continueInterceptedRequest", new Dictionary<string, object>
+                if (!_client.IsClosed)
                 {
-                    { MessageKeys.InterceptionId, InterceptionId },
-                    { MessageKeys.RawResponse, Convert.ToBase64String(responseData) }
-                }).ConfigureAwait(false);
+                    await _client.SendAsync("Network.continueInterceptedRequest", new Dictionary<string, object>
+                    {
+                        { MessageKeys.InterceptionId, InterceptionId },
+                        { MessageKeys.RawResponse, Convert.ToBase64String(responseData) }
+                    }).ConfigureAwait(false);
+                }
             }
             catch (PuppeteerException ex)
             {
