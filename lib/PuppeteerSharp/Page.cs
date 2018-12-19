@@ -81,6 +81,7 @@ namespace PuppeteerSharp
             {
                 Close?.Invoke(this, EventArgs.Empty);
                 IsClosed = true;
+                CleanupResources();
             });
 
             Client.MessageReceived += Client_MessageReceived;
@@ -1058,11 +1059,7 @@ namespace PuppeteerSharp
             return Client.Connection.SendAsync("Target.closeTarget", new
             {
                 targetId = Target.TargetId
-            }, waitForCallback: options?.WaitForCallback ?? true).ContinueWith((task) =>
-            {
-                CleanupResources();
-                return Target.CloseTask;
-            });
+            }, waitForCallback: options?.WaitForCallback ?? true).ContinueWith(tsk => Target.CloseTask); // Close task continuation cleans up resources
         }
 
         /// <summary>
