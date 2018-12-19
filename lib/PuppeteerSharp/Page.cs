@@ -1043,7 +1043,7 @@ namespace PuppeteerSharp
         /// <returns>Task.</returns>
         public Task CloseAsync(PageCloseOptions options = null)
         {
-            if (Client?.Connection?.IsClosed == true)
+            if (Client?.Connection?.IsClosed ?? true)
             {
                 _logger.LogWarning("Protocol error: Connection closed. Most likely the page has been closed.");
                 return Task.CompletedTask;
