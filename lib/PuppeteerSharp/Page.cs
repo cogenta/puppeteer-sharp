@@ -1042,37 +1042,27 @@ namespace PuppeteerSharp
         /// <returns>Task.</returns>
         public Task CloseAsync(PageCloseOptions options = null)
         {
-            void CleanUp()
+            if (Client?.Connection?.IsClosed == true)
             {
-                _frameManager.Dispose();
-                _networkManager.Dispose();
+                _logger.LogWarning("Protocol error: Connection closed. Most likely the page has been closed.");
+                return Task.CompletedTask;
             }
 
-            if (!(Client?.Connection?.IsClosed ?? true))
-            {
-                var runBeforeUnload = options?.RunBeforeUnload ?? false;
+            var runBeforeUnload = options?.RunBeforeUnload ?? false;
 
-                if (runBeforeUnload)
-                {
-                    return Client.SendAsync("Page.close").ContinueWith(tsk => CleanUp());
-                }
-                else
-                {
-                    return Client.Connection.SendAsync("Target.closeTarget", new
-                    {
-                        targetId = Target.TargetId
-                    }).ContinueWith((task) =>
-                    {
-                        CleanUp();
-                        return Target.CloseTask;
-                    });
-                }
+            if (runBeforeUnload)
+            {
+                return Client.SendAsync("Page.close", waitForCallback: options?.WaitForCallback ?? true).ContinueWith(tsk => CleanupResources());
             }
 
-            CleanUp();
-
-            _logger.LogWarning("Protocol error: Connection closed. Most likely the page has been closed.");
-            return Task.CompletedTask;
+            return Client.Connection.SendAsync("Target.closeTarget", new
+            {
+                targetId = Target.TargetId
+            }, waitForCallback: options?.WaitForCallback ?? true).ContinueWith((task) =>
+            {
+                CleanupResources();
+                return Target.CloseTask;
+            });
         }
 
         /// <summary>
@@ -2080,6 +2070,15 @@ namespace PuppeteerSharp
                     ? "undefined"
                     : JsonConvert.SerializeObject(arg, JsonHelper.DefaultJsonSerializerSettings);
             }
+        }
+
+        private void CleanupResources()
+        {
+            Client.MessageReceived -= Client_MessageReceived;
+            _networkManager.Dispose();
+            _frameManager.Dispose();
+            _networkManager = null;
+            _frameManager = null;
         }
         #endregion
 
